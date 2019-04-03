@@ -696,9 +696,7 @@ _xt_user_entry1:
     enabled ints at this level, and fall through.
     */
 .Ln_xt_user_int_timer:
-	movi	a3,  0xFFBF
-	and		a3,  a2,  a3
-	bnez	a3,  3f	
+    bbci    a3,  6,   3f
     /* Interrupt handler for the RTOS tick timer if at this level. */
     movi    a3,  XT_TIMER_INTEN             /* timer interrupt bit */
     sub     a12, a2,  a3                    /* clear timer int and save mask */
