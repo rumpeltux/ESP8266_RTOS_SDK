@@ -334,17 +334,15 @@ _xt_isr_mask:
     .type   _xt_read_ints,@function
     .align  4
 _xt_read_ints:
-    ENTRY(16)
     rsr a2, INTERRUPT
-    RET(16)
+    ret
 
     .global _xt_clear_ints
     .type   _xt_clear_ints,@function
     .align  4
 _xt_clear_ints:
-    ENTRY(16)
     wsr     a2, INTCLEAR
-    RET(16)
+    ret
 
 
     .section    .text._xt_enter_first_task, "ax"
