@@ -274,22 +274,20 @@ void _xt_isr_attach(uint8_t i, _xt_isr func, void* arg)
 
 uint32_t _xt_isr_handler_ccount[3];
 
-uint16_t TASK_SW_ATTR _xt_isr_handler(uint16_t i)
+uint16_t TASK_SW_ATTR _xt_isr_handler(uint32_t i)
 {
     uint32_t index;
     //__asm__("rsr %0, ccount" : "=r"(_xt_isr_handler_ccount[0]));
-    index = __builtin_ffs(i) - 1;
-    /*if (i & (1 << ETS_WDT_INUM)) {
+    if (i & (1 << ETS_MAX_INUM)) {
+        i -= 1 << ETS_MAX_INUM;
+    }
+    if (i & (1 << ETS_WDT_INUM)) {
         index = ETS_WDT_INUM;
     } else if (i & (1 << ETS_GPIO_INUM)) {
         index = ETS_GPIO_INUM;
     } else {
-
-        if (index == ETS_MAX_INUM) {
-            i &= ~(1 << ETS_MAX_INUM);
-            index = __builtin_ffs(i) - 1;
-        }
-    }*/
+        index = __builtin_ffs(i) - 1;
+    }
     uint32_t int_mask = 1 << index;
 
     __asm__ __volatile__("wsr %0, INTCLEAR" :: "r"(int_mask));
