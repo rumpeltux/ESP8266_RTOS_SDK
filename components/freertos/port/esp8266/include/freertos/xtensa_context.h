@@ -78,6 +78,7 @@ space to help manage the spilling of the register windows.
 #define XT_STK_A15              0x48    /* Call0 callee-save */
 #define XT_STK_SAR              0x4C
 #define XT_STK_EXCCAUSE         0x50
+#define XT_STK_RUMPEL	        0x54
 
 #if XCHAL_HAVE_LOOPS
 #define XT_STK_LBEG             0x50
@@ -85,7 +86,7 @@ space to help manage the spilling of the register windows.
 #define XT_STK_LCOUNT           0x58
 #define XT_STK_NEXT1            0x5C    /* next unused offset */
 #else
-#define XT_STK_NEXT1            0x50    /* next unused offset */
+#define XT_STK_NEXT1            0x58    /* next unused offset */
 #endif
                                 /* there may be some unused space here */
 #if XCHAL_EXTRA_SA_SIZE != 0
