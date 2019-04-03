@@ -894,6 +894,7 @@ esp_err_t uart_driver_install(uart_port_t uart_num, int rx_buffer_size, int tx_b
 {
     esp_err_t r;
     UART_CHECK((uart_num < UART_NUM_MAX), "uart_num error", ESP_ERR_INVALID_ARG);
+    ESP_LOGI(UART_TAG, "rx buf: %d", rx_buffer_size);
     UART_CHECK((rx_buffer_size > UART_FIFO_LEN) || ((uart_num == UART_NUM_1) && (rx_buffer_size == 0)), "uart rx buffer length error(>128)", ESP_ERR_INVALID_ARG);
     UART_CHECK((tx_buffer_size > UART_FIFO_LEN) || (tx_buffer_size == 0), "uart tx buffer length error(>128 or 0)", ESP_ERR_INVALID_ARG);
     UART_CHECK((queue_size >= 0), "queue_size error(>=0)", ESP_ERR_INVALID_ARG);
