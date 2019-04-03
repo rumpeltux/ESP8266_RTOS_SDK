@@ -274,7 +274,7 @@ void _xt_isr_attach(uint8_t i, _xt_isr func, void* arg)
 
 uint32_t _xt_isr_handler_ccount[3];
 
-uint16_t TASK_SW_ATTR _xt_isr_handler(uint32_t i)
+uint32_t TASK_SW_ATTR _xt_isr_handler(uint32_t i)
 {
     uint32_t index;
     //__asm__("rsr %0, ccount" : "=r"(_xt_isr_handler_ccount[0]));
