@@ -625,9 +625,9 @@ User Exception (including Level 1 Interrupt from user mode).
 _UserExceptionVector:
 
     wsr     a0,  EXCSAVE_1                      /* preserve a0 */
-    wsr     a1,  EXCSAVE_2
-    call0   _xt_user_exc                        /* user exception handler */
-    /* never returns here - call0 is used as a jump (see note at top) */
+    //rsr a0, ccount
+    //wsr     a0,  EXCSAVE_2
+    j _xt_user_exc                        /* user exception handler */
 
     .end        literal_prefix
 
