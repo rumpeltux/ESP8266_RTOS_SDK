@@ -272,30 +272,37 @@ void _xt_isr_attach(uint8_t i, _xt_isr func, void* arg)
     isr[i].arg = arg;
 }
 
+uint32_t _xt_isr_handler_ccount[3];
+
 uint16_t TASK_SW_ATTR _xt_isr_handler(uint16_t i)
 {
-    uint8_t index;
-
-    if (i & (1 << ETS_WDT_INUM)) {
+    uint32_t index;
+    //__asm__("rsr %0, ccount" : "=r"(_xt_isr_handler_ccount[0]));
+    index = __builtin_ffs(i) - 1;
+    /*if (i & (1 << ETS_WDT_INUM)) {
         index = ETS_WDT_INUM;
     } else if (i & (1 << ETS_GPIO_INUM)) {
         index = ETS_GPIO_INUM;
     } else {
-        index = __builtin_ffs(i) - 1;
 
         if (index == ETS_MAX_INUM) {
             i &= ~(1 << ETS_MAX_INUM);
             index = __builtin_ffs(i) - 1;
         }
-    }
+    }*/
+    uint32_t int_mask = 1 << index;
 
-    _xt_clear_ints(1 << index);
+    __asm__ __volatile__("wsr %0, INTCLEAR" :: "r"(int_mask));
+    //_xt_clear_ints(int_mask);
 
     _xt_isr_status = 1;
-    isr[index].handler(isr[index].arg);
+    _xt_isr_entry * entry = isr + index;
+    //__asm__ __volatile__("rsr %0, ccount" : "=r"(_xt_isr_handler_ccount[1]));
+    entry->handler(entry->arg);
+    //__asm__ __volatile__("rsr %0, ccount" : "=r"(_xt_isr_handler_ccount[2]));
     _xt_isr_status = 0;
 
-    return i & ~(1 << index);
+    return i ^ int_mask;
 }
 
 int xPortInIsrContext(void)
