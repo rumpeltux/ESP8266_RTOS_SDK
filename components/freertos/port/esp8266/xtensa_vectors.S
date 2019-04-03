@@ -642,8 +642,8 @@ _xt_user_exc:
     interacting with RTOS.
     */
     rsr     a0,  EXCCAUSE
-    beqi    a0,  EXCCAUSE_LOAD_STORE_ERROR,  LoadStoreErrorHandler
     beqi    a0,  EXCCAUSE_LEVEL1INTERRUPT,  _xt_user_entry1
+    beqi    a0,  EXCCAUSE_LOAD_STORE_ERROR,  LoadStoreErrorHandler
 
     j   _xt_ext_panic
 
