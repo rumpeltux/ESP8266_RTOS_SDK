@@ -626,6 +626,7 @@ _UserExceptionVector:
 
     wsr     a0,  EXCSAVE_1                      /* preserve a0 */
     //rsr a0, ccount
+    // ccount 68
     //wsr     a0,  EXCSAVE_2
     j _xt_user_exc                        /* user exception handler */
 
@@ -652,17 +653,22 @@ _xt_user_entry1:
     mov     a0,  sp                             /* sp == a1 */
     addi    sp,  sp,  -XT_STK_FRMSZ             /* allocate interrupt stack frame */
     s32i    a0,  sp,  XT_STK_A1                 /* save pre-interrupt SP */
+    // ccount 85
     rsr     a0,  PS                             /* save interruptee's PS */
     s32i    a0,  sp,  XT_STK_PS
+    // ccount 87
     rsr     a0,  EPC_1                          /* save interruptee's PC */
     s32i    a0,  sp,  XT_STK_PC
     rsr     a0,  EXCSAVE_1                      /* save interruptee's a0 */
     s32i    a0,  sp,  XT_STK_A0
+    // ccount 91: the next load interrupts the memory pipeline :/
     movi    a0,  _xt_user_exit                  /* save exit point for dispatch */
     s32i    a0,  sp,  XT_STK_EXIT
+    // ccount 98
 
     /* Save rest of interrupt context and enter RTOS. */
     call0   XT_RTOS_INT_ENTER                   /* common RTOS interrupt entry */
+    // ccount 142
 
     /* !! We are now on the RTOS system stack !! */
 
@@ -670,6 +676,8 @@ _xt_user_entry1:
     movi    a0,  PS_INTLEVEL(XCHAL_EXCM_LEVEL) | PS_UM
     wsr     a0,  PS
     rsync
+
+    // ccount 145
 
     /* !! It is OK to call C handlers after this point. !! */
 
@@ -681,10 +689,13 @@ _xt_user_entry1:
     */
     rsr     a2,  INTENABLE
     rsr     a3,  INTERRUPT
-    movi    a4,  XCHAL_INTLEVEL1_MASK
     and     a2,  a2,  a3
-    and     a2,  a2,  a4
+    // XCHAL_INTLEVEL1_MASK is 0x3FFF (14 bit), so no need to load this.
+    //movi    a4,  XCHAL_INTLEVEL1_MASK
+    //and     a2,  a2,  a4
+    extui   a2,  a2,  0, 14
 
+    // ccount 151 (was 156)
 
     /* USER_EDIT:
     ADD LOW PRIORITY LEVEL 1 INTERRUPT HANDLER CODE HERE, OR CALL C HANDLER.
@@ -704,9 +715,15 @@ _xt_user_entry1:
     mov     a2,  a12                        /* recover mask of remaining ints */
     beqz	a2,  4f
 3:
+    // ccount 154
+    /* Move to our separate stack. Save the original SP in _chip_interrupt_tmp */
+#ifdef CONFIG_USE_CUSTOM_ISR_STACK
     movi    a0, _chip_interrupt_tmp
     s32i    a1, a0, 0
+    // ccount 162
     mov     a1, a0
+    s32i    a13, sp, XT_STK_A13
+#endif
 
 #ifndef CONFIG_TASK_SWITCH_FASTER
     movi    a0, _xt_isr_handler
@@ -715,8 +732,10 @@ _xt_user_entry1:
     call0   _xt_isr_handler
 #endif
 
+#ifdef CONFIG_USE_CUSTOM_ISR_STACK
     movi    a0, _chip_interrupt_tmp
     l32i    a1, a0, 0
+#endif
 
 	bnez	a2, .Ln_xt_user_int_timer
 4:
