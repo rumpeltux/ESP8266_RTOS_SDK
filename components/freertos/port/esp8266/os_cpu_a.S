@@ -82,7 +82,18 @@ _xt_int_enter:
     .type   _xt_int_exit,@function
     .align  4
 _xt_int_exit:
+    movi a2, pxCurrentTCB
+    l32i a2, a2, 0
+    l32i a2, a2, 0  // the original sp
+
+    bne a2, sp, 1f
+    /* shortcut for a fast exit if no context switch happened */
+    l32i a0, sp, XT_STK_EXIT
+    j _xt_context_restore
+
+1:
     /*
+    A context switch happened.
     Call0 ABI callee-saved regs a12-15 need to be saved before possible preemption.
     However a12-13 were already saved by _xt_int_enter().
 	Save A14, A15 in sp to a14, a15 in cpu
@@ -91,7 +102,6 @@ _xt_int_exit:
     s32i    a15, sp,  XT_STK_A15
 
     /*
-	Save A14, A15 in sp to a14, a15 in cpu
     */
     movi	sp,  pxCurrentTCB
 	l32i    sp,  sp,  0
