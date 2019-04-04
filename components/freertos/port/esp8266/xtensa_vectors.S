@@ -746,34 +746,47 @@ _xt_user_entry1:
 .L_xt_user_done:
     j       XT_RTOS_INT_EXIT                /* does not return directly here */
 	
-
+    /* Finds out which user defined ISR handler to call and calls it. */
     .global     _xt_isr_handler
     .type       _xt_isr_handler,@function
     .align      4
 #define ETS_GPIO_INUM       4
 #define ETS_WDT_INUM        8
+#define _xt_isr_info_int_handler 0
+#define _xt_isr_info_int_arg     4
+#define _xt_isr_info_status      16*8
 _xt_isr_handler:
     ENTRY(16)
-    movi    a5,  isr  // _xt_isr_info
+    movi    a13,  _xt_isr_info  // from port.c
     /* Handle these two interrupts first. */
     bbsi    a2,  ETS_WDT_INUM, 2f
     bbsi    a2,  ETS_GPIO_INUM, 3f
-    /* Compute the MSB that is 1 */
+    /* Compute the MSB that is set to 1 */
     nsau    a3,  a2
     movi    a4,  31
     sub     a3,  a4, a3
+
 1:  /* a3 is now the interrupt index */
+
+    /* record that we're within ISR */
     movi    a4,  1
+    s8i     a4,  a13, _xt_isr_info_status
+
     ssl     a3
     sll     a4,  a4
     /* a4 is now the interrupt mask (a4 = 1 << a3) */
-    xor     a12,  a2,  a4
+    xor     a12, a2,  a4
     wsr.intclear a4
+
     /* call the user-defined interrupt handler */
-    addx8   a6,  a3,  a5
-    l32i    a8,  a6,  0  // inthandler
-    l32i    a2,  a6,  4  // arg
-    callx0  a8
+    addx8   a3,  a3,  a13
+    l32i    a0,  a3,  _xt_isr_info_int_handler
+    l32i    a2,  a3,  _xt_isr_info_int_arg
+    callx0  a0
+
+    /* record that we left ISR */
+    movi    a4,  0
+    s8i     a4,  a13, _xt_isr_info_status
     mov     a2,  a12
     RET(16)
 
