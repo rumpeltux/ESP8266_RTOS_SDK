@@ -263,8 +263,12 @@ bool interrupt_is_disable(void)
     return tmp & 0xFUL ? true : false;
 }
 
-_xt_isr_entry isr[16];
-char _xt_isr_status = 0;
+struct _xt_isr_info {
+    _xt_isr_entry isr[16];
+    char status;
+} _xt_isr_info;
+    _xt_isr_entry isr[16];
+    char _xt_isr_status;
 
 void _xt_isr_attach(uint8_t i, _xt_isr func, void* arg)
 {
@@ -274,8 +278,9 @@ void _xt_isr_attach(uint8_t i, _xt_isr func, void* arg)
 
 uint32_t _xt_isr_handler_ccount[3];
 
-uint32_t TASK_SW_ATTR _xt_isr_handler(uint32_t i)
+uint32_t TASK_SW_ATTR _xt_isr_handler2(uint32_t i)
 {
+    // This is still timing critical code, so let's do it in assembly
     uint32_t index;
     //__asm__("rsr %0, ccount" : "=r"(_xt_isr_handler_ccount[0]));
     if (i & (1 << ETS_MAX_INUM)) {
@@ -286,19 +291,21 @@ uint32_t TASK_SW_ATTR _xt_isr_handler(uint32_t i)
     } else if (i & (1 << ETS_GPIO_INUM)) {
         index = ETS_GPIO_INUM;
     } else {
-        index = __builtin_ffs(i) - 1;
+        // Get the position of the MSB that is 1
+	__asm__("nsau %0, %1" : "=r"(index) : "r"(i));
+	index = 31 - index;
     }
     uint32_t int_mask = 1 << index;
 
     __asm__ __volatile__("wsr %0, INTCLEAR" :: "r"(int_mask));
     //_xt_clear_ints(int_mask);
 
-    _xt_isr_status = 1;
+    //_xt_isr_status = 1;
     _xt_isr_entry * entry = isr + index;
     //__asm__ __volatile__("rsr %0, ccount" : "=r"(_xt_isr_handler_ccount[1]));
     entry->handler(entry->arg);
     //__asm__ __volatile__("rsr %0, ccount" : "=r"(_xt_isr_handler_ccount[2]));
-    _xt_isr_status = 0;
+    //_xt_isr_status = 0;
 
     return i ^ int_mask;
 }

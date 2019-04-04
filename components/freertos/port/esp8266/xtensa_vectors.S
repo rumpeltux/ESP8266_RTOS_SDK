@@ -625,8 +625,7 @@ User Exception (including Level 1 Interrupt from user mode).
 _UserExceptionVector:
 
     wsr     a0,  EXCSAVE_1                      /* preserve a0 */
-    //rsr a0, ccount
-    // ccount 68
+    //rsr a0, ccount  // 68
     //wsr     a0,  EXCSAVE_2
     j _xt_user_exc                        /* user exception handler */
 
@@ -709,15 +708,17 @@ _xt_user_entry1:
 .Ln_xt_user_int_timer:
     bbci    a3,  6,   3f
     /* Interrupt handler for the RTOS tick timer if at this level. */
+    /* Handle CCOMPARE timer interrupts for ticks */
     movi    a3,  XT_TIMER_INTEN             /* timer interrupt bit */
     sub     a12, a2,  a3                    /* clear timer int and save mask */
     call0   XT_RTOS_TIMER_INT
     mov     a2,  a12                        /* recover mask of remaining ints */
     beqz	a2,  4f
+    /* Other interrupts */
 3:
     // ccount 154
-    /* Move to our separate stack. Save the original SP in _chip_interrupt_tmp */
 #ifdef CONFIG_USE_CUSTOM_ISR_STACK
+    /* Move to our separate stack. Save the original SP in _chip_interrupt_tmp */
     movi    a0, _chip_interrupt_tmp
     s32i    a1, a0, 0
     // ccount 162
@@ -736,18 +737,53 @@ _xt_user_entry1:
     movi    a0, _chip_interrupt_tmp
     l32i    a1, a0, 0
 #endif
-
+    
 	bnez	a2, .Ln_xt_user_int_timer
 4:
     /* All interrupts at this level should have been handled now. */
-    beqz    a2, .L_xt_user_done
-
-    call0   _xt_ext_panic
 
     /* Done handling after XT_RTOS_INT_ENTER. Give control to RTOS. */
 .L_xt_user_done:
-    call0   XT_RTOS_INT_EXIT                /* does not return directly here */
+    j       XT_RTOS_INT_EXIT                /* does not return directly here */
 	
+
+    .global     _xt_isr_handler
+    .type       _xt_isr_handler,@function
+    .align      4
+#define ETS_GPIO_INUM       4
+#define ETS_WDT_INUM        8
+_xt_isr_handler:
+    ENTRY(16)
+    /* Handle these two interrupts first. */
+    bbsi    a2,  ETS_WDT_INUM, 2f
+    bbsi    a2,  ETS_GPIO_INUM, 3f
+    /* Compute the MSB that is 1 */
+    nsau    a3,  a2
+    movi    a4,  31
+    sub     a3,  a4, a3
+1:  /* a3 is now the interrupt index */
+    movi    a5,  isr  // _xt_isr_info
+    movi    a4,  1
+    ssl     a3
+    sll     a4,  a4
+    /* a4 is now the interrupt mask (a4 = 1 << a3) */
+    xor     a7,  a2,  a4
+    s32i    a7,  sp,  4
+    wsr.intclear a4
+    addx8   a6,  a3,  a5
+    l32i    a3,  a6,  0  // inthandler
+    l32i    a2,  a6,  4  // arg
+    callx0  a3
+    l32i    a2,  sp,  4
+    RET(16)
+
+2:
+    movi    a3,  ETS_WDT_INUM
+    j 1f
+3: 
+    movi    a3,  ETS_GPIO_INUM
+    j 1f
+
     /*
     Exit point for dispatch. Saved in interrupt stack frame at XT_STK_EXIT
     on entry and used to return to a thread or interrupted interrupt handler.
