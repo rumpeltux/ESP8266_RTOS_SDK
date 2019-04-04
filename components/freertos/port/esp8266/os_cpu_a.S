@@ -99,7 +99,6 @@ _xt_int_exit:
     However a12 was already saved by _xt_int_enter().
 	Save A14, A15 in sp to a14, a15 in cpu
     */
-    //s32i    a13, sp, XT_STK_A13
     s32i    a14, sp,  XT_STK_A14
     s32i    a15, sp,  XT_STK_A15
 

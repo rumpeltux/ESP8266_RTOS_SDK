@@ -724,17 +724,15 @@ _xt_user_entry1:
     s32i    a1, a0, 0
     // ccount 162
     mov     a1, a0
-    s32i    a13, sp, XT_STK_A13
 #endif
 
-#define ETS_GPIO_INUM       4
-#define ETS_WDT_INUM        8
-#define _xt_isr_info_int_handler 0
-#define _xt_isr_info_int_arg     4
-#define _xt_isr_info_status      16*8
+    // From rom/ets_sys.h which we can't directly include here.
+    #define ETS_GPIO_INUM       4
+    #define ETS_WDT_INUM        8
+
     movi    a13,  _xt_isr_info  // from port.c
     /* Handle these two interrupts first. */
-    bbsi    a2,  ETS_WDT_INUM, .L_xt_user_wdt_inum
+    bbsi    a2,  ETS_WDT_INUM,  .L_xt_user_wdt_inum
     bbsi    a2,  ETS_GPIO_INUM, .L_xt_user_gpio_inum
 
     /* Compute the MSB that is set to 1 */
@@ -742,6 +740,9 @@ _xt_user_entry1:
     movi    a4,  31
     sub     a3,  a4, a3
 
+    #define _xt_isr_info_int_handler 0
+    #define _xt_isr_info_int_arg     4
+    #define _xt_isr_info_status      16*8
 .L_xt_user_int_handler:
     /* a3 is now the interrupt index */
 
