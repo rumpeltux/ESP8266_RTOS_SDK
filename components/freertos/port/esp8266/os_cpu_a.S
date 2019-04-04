@@ -90,13 +90,12 @@ _xt_int_exit:
     /* shortcut for a fast exit if no context switch happened */
     l32i a0, sp, XT_STK_EXIT
     j _xt_context_restore
-    
-  
+
 1:
     /*
     A context switch happened.
     Call0 ABI callee-saved regs a12-15 need to be saved before possible preemption.
-    However a12 was already saved by _xt_int_enter().
+    However a12-13 were already saved by _xt_int_enter().
 	Save A14, A15 in sp to a14, a15 in cpu
     */
     s32i    a14, sp,  XT_STK_A14
@@ -113,17 +112,15 @@ _xt_int_exit:
     is a nested interrupt or the interrupted task was not preempted.
     We are still on the same stack so there's no need to load the SP.
     */
-    movi	a10, pxCurrentTCB
-	l32i    a10, a10, 0
-    addi    a11, sp,  XT_STK_FRMSZ
-    s32i	a11, a11, 0
+    movi	a14, pxCurrentTCB
+	l32i    a14, a14, 0
+    addi    a15, sp,  XT_STK_FRMSZ
+    s32i	a15, a14, 0
 
-    /* Restore full context from interrupt stack frame and return to exit dispatcher */
+    /* Restore full context from interrupt stack frame and return to exit dispatcher. */
     call0   _xt_context_restore
 
     /* In Call0 ABI, restore callee-saved regs (A12, A13 already restored by _xt_context_restore). */
-    //l32i    a12, sp,  XT_STK_A12   
-    //l32i    a13, sp,  XT_STK_A13
     l32i    a14, sp,  XT_STK_A14   
     l32i    a15, sp,  XT_STK_A15
 
