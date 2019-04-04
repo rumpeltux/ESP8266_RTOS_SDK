@@ -754,6 +754,7 @@ _xt_user_entry1:
 #define ETS_WDT_INUM        8
 _xt_isr_handler:
     ENTRY(16)
+    movi    a5,  isr  // _xt_isr_info
     /* Handle these two interrupts first. */
     bbsi    a2,  ETS_WDT_INUM, 2f
     bbsi    a2,  ETS_GPIO_INUM, 3f
@@ -762,19 +763,18 @@ _xt_isr_handler:
     movi    a4,  31
     sub     a3,  a4, a3
 1:  /* a3 is now the interrupt index */
-    movi    a5,  isr  // _xt_isr_info
     movi    a4,  1
     ssl     a3
     sll     a4,  a4
     /* a4 is now the interrupt mask (a4 = 1 << a3) */
-    xor     a7,  a2,  a4
-    s32i    a7,  sp,  4
+    xor     a12,  a2,  a4
     wsr.intclear a4
+    /* call the user-defined interrupt handler */
     addx8   a6,  a3,  a5
-    l32i    a3,  a6,  0  // inthandler
+    l32i    a8,  a6,  0  // inthandler
     l32i    a2,  a6,  4  // arg
-    callx0  a3
-    l32i    a2,  sp,  4
+    callx0  a8
+    mov     a2,  a12
     RET(16)
 
 2:
