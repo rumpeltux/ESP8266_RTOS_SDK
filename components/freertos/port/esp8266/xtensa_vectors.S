@@ -706,16 +706,17 @@ _xt_user_entry1:
     enabled ints at this level, and fall through.
     */
 .Ln_xt_user_int_timer:
-    bbci    a3,  6,   3f
+    bbci    a3,  6,   .L_xt_user_int_other
     /* Interrupt handler for the RTOS tick timer if at this level. */
     /* Handle CCOMPARE timer interrupts for ticks */
     movi    a3,  XT_TIMER_INTEN             /* timer interrupt bit */
     sub     a12, a2,  a3                    /* clear timer int and save mask */
     call0   XT_RTOS_TIMER_INT
     mov     a2,  a12                        /* recover mask of remaining ints */
-    beqz	a2,  4f
+    beqz	a2,  .L_xt_user_done
+
     /* Other interrupts */
-3:
+.L_xt_user_int_other:
     // ccount 154
 #ifdef CONFIG_USE_CUSTOM_ISR_STACK
     /* Move to our separate stack. Save the original SP in _chip_interrupt_tmp */
@@ -726,47 +727,23 @@ _xt_user_entry1:
     s32i    a13, sp, XT_STK_A13
 #endif
 
-#ifndef CONFIG_TASK_SWITCH_FASTER
-    movi    a0, _xt_isr_handler
-    callx0	a0
-#else
-    call0   _xt_isr_handler
-#endif
-
-#ifdef CONFIG_USE_CUSTOM_ISR_STACK
-    movi    a0, _chip_interrupt_tmp
-    l32i    a1, a0, 0
-#endif
-    
-	bnez	a2, .Ln_xt_user_int_timer
-4:
-    /* All interrupts at this level should have been handled now. */
-
-    /* Done handling after XT_RTOS_INT_ENTER. Give control to RTOS. */
-.L_xt_user_done:
-    j       XT_RTOS_INT_EXIT                /* does not return directly here */
-	
-    /* Finds out which user defined ISR handler to call and calls it. */
-    .global     _xt_isr_handler
-    .type       _xt_isr_handler,@function
-    .align      4
 #define ETS_GPIO_INUM       4
 #define ETS_WDT_INUM        8
 #define _xt_isr_info_int_handler 0
 #define _xt_isr_info_int_arg     4
 #define _xt_isr_info_status      16*8
-_xt_isr_handler:
-    ENTRY(16)
     movi    a13,  _xt_isr_info  // from port.c
     /* Handle these two interrupts first. */
-    bbsi    a2,  ETS_WDT_INUM, 2f
-    bbsi    a2,  ETS_GPIO_INUM, 3f
+    bbsi    a2,  ETS_WDT_INUM, .L_xt_user_wdt_inum
+    bbsi    a2,  ETS_GPIO_INUM, .L_xt_user_gpio_inum
+
     /* Compute the MSB that is set to 1 */
     nsau    a3,  a2
     movi    a4,  31
     sub     a3,  a4, a3
 
-1:  /* a3 is now the interrupt index */
+.L_xt_user_int_handler:
+    /* a3 is now the interrupt index */
 
     /* record that we're within ISR */
     movi    a4,  1
@@ -788,15 +765,28 @@ _xt_isr_handler:
     movi    a4,  0
     s8i     a4,  a13, _xt_isr_info_status
     mov     a2,  a12
-    RET(16)
 
-2:
+#ifdef CONFIG_USE_CUSTOM_ISR_STACK
+    movi    a0, _chip_interrupt_tmp
+    l32i    a1, a0, 0
+#endif
+    
+    bnez    a2, .Ln_xt_user_int_timer
+
+    /* All interrupts at this level should have been handled now. */
+    /* Done handling after XT_RTOS_INT_ENTER. Give control to RTOS. */
+.L_xt_user_done:
+    j       XT_RTOS_INT_EXIT                /* does not return directly here */
+
+.L_xt_user_wdt_inum:
     movi    a3,  ETS_WDT_INUM
-    j 1f
-3: 
-    movi    a3,  ETS_GPIO_INUM
-    j 1f
+    j .L_xt_user_int_handler
 
+.L_xt_user_gpio_inum:
+    movi    a3,  ETS_GPIO_INUM
+    j .L_xt_user_int_handler
+
+	
     /*
     Exit point for dispatch. Saved in interrupt stack frame at XT_STK_EXIT
     on entry and used to return to a thread or interrupted interrupt handler.
