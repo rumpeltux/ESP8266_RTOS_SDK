@@ -60,7 +60,6 @@
 #define lwip_select       lwip_select_esp
 #define lwip_ioctlsocket  lwip_ioctl_esp
 
-#if LWIP_POSIX_SOCKETS_IO_NAMES
 #undef lwip_read
 #undef lwip_write
 #undef lwip_writev
@@ -75,7 +74,6 @@
 #define lwip_close        lwip_close_esp
 #define lwip_fcntl        lwip_fcntl_esp
 #define lwip_ioctl        lwip_ioctl_esp
-#endif /* LWIP_POSIX_SOCKETS_IO_NAMES */
 
 #include "../../lwip/src/api/sockets.c"
 
@@ -100,7 +98,6 @@
 #undef lwip_select
 #undef lwip_ioctlsocket
 
-#if LWIP_POSIX_SOCKETS_IO_NAMES
 #undef lwip_read
 #undef lwip_write
 #undef lwip_writev
@@ -108,7 +105,6 @@
 #undef closesocket
 #undef lwip_fcntl
 #undef lwip_ioctl
-#endif /* LWIP_POSIX_SOCKETS_IO_NAMES */
 
 /********************************************************************/
 #define LWIP_SYNC_MT_SLEEP_MS 10
@@ -540,6 +536,8 @@ static void lwip_socket_set_so_link(int s, int linger)
 #else
 #error "LWIP_SO_LINGER must be enable"
 #endif /* LWIP_SO_LINGER */
+#else /* SET_SOLINGER_DEFAULT */
+#define lwip_socket_set_so_link(_s, _linger)
 #endif /* SET_SOLINGER_DEFAULT */
 
 int lwip_socket(int domain, int type, int protocol)

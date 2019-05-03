@@ -682,18 +682,10 @@ _xt_user_entry1:
 
     /* Handle level 1 interrupts. No need to enable med-pri interrupts now. */
 .L_xt_user_int:
-    /*
-    Get mask of pending, enabled interrupts at this level into a2.
-    Comment this out if there is only one interrupt at this level.
-    */
-    rsr     a2,  INTENABLE
-    rsr     a3,  INTERRUPT
-    and     a2,  a2,  a3
     // XCHAL_INTLEVEL1_MASK is 0x3FFF (14 bit), so no need to load this.
     //movi    a4,  XCHAL_INTLEVEL1_MASK
     //and     a2,  a2,  a4
-    extui   a2,  a2,  0, 14
-
+    // extui   a2,  a2,  0, 14
     // ccount 151 (was 156)
 
     /* USER_EDIT:
@@ -705,15 +697,7 @@ _xt_user_entry1:
     When done, ensure a2 contains a mask of unhandled (still pending)
     enabled ints at this level, and fall through.
     */
-.Ln_xt_user_int_timer:
-    bbci    a3,  6,   .L_xt_user_int_other
-    /* Interrupt handler for the RTOS tick timer if at this level. */
-    /* Handle CCOMPARE timer interrupts for ticks */
-    movi    a3,  XT_TIMER_INTEN             /* timer interrupt bit */
-    sub     a12, a2,  a3                    /* clear timer int and save mask */
-    call0   XT_RTOS_TIMER_INT
-    mov     a2,  a12                        /* recover mask of remaining ints */
-    beqz	a2,  .L_xt_user_done
+3:
 
     /* Other interrupts */
 .L_xt_user_int_other:
@@ -731,9 +715,6 @@ _xt_user_entry1:
     #define ETS_WDT_INUM        8
 
     movi    a13,  _xt_isr_info  // from port.c
-    /* Handle these two interrupts first. */
-    bbsi    a2,  ETS_WDT_INUM,  .L_xt_user_wdt_inum
-    bbsi    a2,  ETS_GPIO_INUM, .L_xt_user_gpio_inum
 
     /* Compute the MSB that is set to 1 */
     nsau    a3,  a2
@@ -772,8 +753,7 @@ _xt_user_entry1:
     l32i    a1, a0, 0
 #endif
     
-    bnez    a2, .Ln_xt_user_int_timer
-
+    bnez    a2, .L_xt_user_int_other
     /* All interrupts at this level should have been handled now. */
     /* Done handling after XT_RTOS_INT_ENTER. Give control to RTOS. */
 .L_xt_user_done:
@@ -854,7 +834,7 @@ nmi_common:
     s32i    a1,  a0,  HESF_AR(1)
     l32i    a2,  a2,  0                             // get dispatcher address
     s32i    a3,  a0,  HESF_AR(3)
-    xsr a2, EXCSAVE_LEVEL                           // get saved a0, restore dispatcher address
+    xsr     a2,  EXCSAVE_LEVEL                           // get saved a0, restore dispatcher address
 
     s32i    a4,  a0,  HESF_AR(4)
     s32i    a2,  a0,  HESF_AR(0)
@@ -876,7 +856,7 @@ nmi_common:
     rsr     a4,  EXCCAUSE
     s32i    a3,  a0,  HESF_EPC1
     s32i    a4,  a0,  HESF_EXCCAUSE
-    rsr a3, EXCVADDR
+    rsr     a3,  EXCVADDR
     s32i    a3,  a0,  HESF_EXCVADDR
     rsr     a4,  EXCSAVE1
     s32i    a4,  a0,  HESF_EXCSAVE1
