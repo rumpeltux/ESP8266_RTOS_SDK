@@ -682,10 +682,17 @@ _xt_user_entry1:
 
     /* Handle level 1 interrupts. No need to enable med-pri interrupts now. */
 .L_xt_user_int:
-    // XCHAL_INTLEVEL1_MASK is 0x3FFF (14 bit), so no need to load this.
-    //movi    a4,  XCHAL_INTLEVEL1_MASK
-    //and     a2,  a2,  a4
-    // extui   a2,  a2,  0, 14
+    /*
+    Get mask of pending, enabled interrupts at this level into a2.
+    Comment this out if there is only one interrupt at this level.
+    */
+    rsr     a2,  INTENABLE
+    rsr     a3,  INTERRUPT
+    and     a2,  a2,  a3
+
+    /* a2 &= XCHAL_INTLEVEL1_MASK */
+    /* XCHAL_INTLEVEL1_MASK is 0x3FFF (14 bit), so no need to load this. */
+    extui   a2,  a2,  0, 14
     // ccount 151 (was 156)
 
     /* USER_EDIT:
@@ -697,8 +704,6 @@ _xt_user_entry1:
     When done, ensure a2 contains a mask of unhandled (still pending)
     enabled ints at this level, and fall through.
     */
-3:
-
     /* Other interrupts */
 .L_xt_user_int_other:
     // ccount 154
@@ -714,13 +719,14 @@ _xt_user_entry1:
     #define ETS_GPIO_INUM       4
     #define ETS_WDT_INUM        8
 
-    movi    a13,  _xt_isr_info  // from port.c
+    movi    a13,  _xt_isr_info  // struct defined in port.c
 
     /* Compute the MSB that is set to 1 */
     nsau    a3,  a2
     movi    a4,  31
     sub     a3,  a4, a3
 
+    // Keep these offsets in sync with the struct definition in port.c
     #define _xt_isr_info_int_handler 0
     #define _xt_isr_info_int_arg     4
     #define _xt_isr_info_status      16*8
@@ -734,6 +740,11 @@ _xt_user_entry1:
     ssl     a3
     sll     a4,  a4
     /* a4 is now the interrupt mask (a4 = 1 << a3) */
+
+    /*
+    clear the mask from pending interrupts and put it in a
+    callee-saved register, so that we can restore it later.
+    */
     xor     a12, a2,  a4
     wsr.intclear a4
 
@@ -746,7 +757,7 @@ _xt_user_entry1:
     /* record that we left ISR */
     movi    a4,  0
     s8i     a4,  a13, _xt_isr_info_status
-    mov     a2,  a12
+    mov     a2,  a12  /* restore the pending interrupt mask */
 
 #ifdef CONFIG_USE_CUSTOM_ISR_STACK
     movi    a0, _chip_interrupt_tmp

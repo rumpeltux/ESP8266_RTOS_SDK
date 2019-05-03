@@ -282,6 +282,10 @@ bool interrupt_is_disable(void)
     return tmp & 0xFUL ? true : false;
 }
 
+// We keep both in a struct, so that they are colocated in memory
+// and the assembly code only needs to remember the base address
+// of one variable.
+// Keep any changes in sync with xtensa_vectors.S
 struct _xt_isr_info {
     _xt_isr_entry isr[16];
     char status;
